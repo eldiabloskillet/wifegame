@@ -40,7 +40,6 @@
         rows.push({ row, cells });
         board.append(row);
       }
-      const hint = h('div', { class: 'g-hint-slot' }, h('span', { class: 'muted' }, 'A hint appears after 3 guesses.'));
       let r = 0;
       const kb = CQ.keyboard(ctx.key);
 
@@ -70,7 +69,6 @@
           const won = cur === W;
           r++;
           cur = '';
-          if (r === 3 && !won) hint.replaceChildren(CQ.clueBox(ctx.clue, 'Hint'));
           setTimeout(() => {
             if (won) ctx.win(`${r}/${maxRows}`);
             else if (r >= maxRows) ctx.fail(`X/${maxRows}`);
@@ -82,7 +80,6 @@
       root.append(
         h('p', { class: 'g-help' }, `${L} letters, ${maxRows} tries. Any letter combination is allowed.`),
         board,
-        hint,
         kb.el
       );
     },

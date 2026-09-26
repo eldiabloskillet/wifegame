@@ -272,6 +272,8 @@
   function guessRows() {
     return state.guesses.map((key) => key.split(',').map((i) => GROUP_EMOJI[puzzle.groups[items[i].group].difficulty]).join(''));
   }
+  // Link to the live game: this page's own address when hosted, the public site otherwise (e.g. opened from a file).
+  const SITE_URL = /^https?:$/.test(location.protocol) ? location.origin + location.pathname : 'https://eldiabloskillet.github.io/wifegame/';
   function shareText() {
     const t = tally();
     const d = CQ.now().toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -286,6 +288,7 @@
       '',
       `${t.won}/16 games · ${state.mistakes} mistake${state.mistakes === 1 ? '' : 's'} · ⏱ ${fmtTime(t.ms)}`,
       `Rank: ${t.rank}`,
+      SITE_URL,
     ].join('\n');
   }
   function openReceipt() {
@@ -328,6 +331,7 @@
         h('div', { class: 'rc-rule' }),
         h('div', { class: 'rc-center' }, '*** NO REFUNDS ON BOUGHT VOWELS ***'),
         h('div', { class: 'rc-center' }, 'Thank you for shopping at wifemart! Come back after midnight.'),
+        h('div', { class: 'rc-center rc-small' }, SITE_URL.replace(/^https?:\/\//, '')),
         h('div', { class: 'rc-barcode' }, bars),
         h('div', { class: 'rc-center rc-small' }, dateKey.replace(/-/g, '') + ' ' + state.order.map((i) => (state.results[i] === 'won' ? 1 : 0)).join(''))
       )
