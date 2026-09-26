@@ -76,7 +76,7 @@
     const t = tally();
     const games = {};
     Object.entries(state.results).forEach(([i, r]) => (games[items[i].game] = r === 'won' ? 1 : 0));
-    hist[dateKey] = { w: t.won, g: t.groups, m: state.mistakes, over: state.over, solved: state.over && !state.lostConnections, ms: t.ms, games };
+    hist[dateKey] = { p: t.points, w: t.won, g: t.groups, m: state.mistakes, over: state.over, solved: state.over && !state.lostConnections, ms: t.ms, games };
     try { localStorage.setItem(HISTORY, JSON.stringify(hist)); } catch (e) {}
   }
   // Clean out old days (not while previewing, or we'd wipe today's progress).
@@ -250,28 +250,22 @@
   document.getElementById('stats-btn').addEventListener('click', openStats);
   statsModal.addEventListener('click', (e) => (e.target === statsModal || e.target.closest('.st-close')) && (statsModal.hidden = true));
 
-  // ---------- Results receipt ----------
+  // ---------- Results & points ----------
   const GROUP_EMOJI = ['🟨', '🟩', '🟦', '🟪'];
+  // A won game is worth 100 plus a speed bonus of up to 50 (−1 per 6 seconds, gone after 5 minutes). Lost = 0.
+  const PTS_GAME = 100, PTS_SPEED = 50, PTS_GROUP = 200, PTS_MISTAKE = -50;
+  const gamePoints = (i) =>
+    state.results[i] === 'won' ? PTS_GAME + Math.max(0, PTS_SPEED - Math.floor((state.times[i] || 0) / 6000)) : 0;
   const fmtTime = (ms) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
-  const fmtPrice = (ms) => { const s = Math.round(ms / 1000); return `$${Math.floor(s / 60)}.${String(s % 60).padStart(2, '0')}`; };
-  // Receipt total, a golf-style score: $1 per minute played + $1 per Connections mistake + $3 per failed game.
-  const MISTAKE_FEE = 60000, FAIL_FEE = 180000; // in "ms" so they format like time ($1.00 = 1 minute)
+  const fmtPts = (n) => (n < 0 ? '−' : '') + Math.abs(n).toLocaleString();
   function tally() {
-    const failed = Object.values(state.results).filter((r) => r === 'lost').length;
     const won = Object.values(state.results).filter((r) => r === 'won').length;
-    const played = Object.keys(state.stats).length;
     const ms = Object.values(state.times).reduce((a, b) => a + b, 0);
     // Groups actually found by guessing (a lost game auto-reveals the rest).
     const groups = state.guesses.filter((k) => new Set(k.split(',').map((i) => items[i].group)).size === 1).length;
-    const score = won + groups * 2 - state.mistakes;
-    const rank = score >= 24 && state.mistakes === 0 ? 'Grand Lexicographer Supreme'
-      : score >= 20 ? 'Distinguished Word Baron'
-      : score >= 14 ? 'Journeyman Puzzler'
-      : score >= 8 ? 'Casual Letter Enjoyer'
-      : score >= 3 ? 'Alphabet Tourist'
-      : 'Person Who Opened the App';
-    const total = ms + state.mistakes * MISTAKE_FEE + failed * FAIL_FEE;
-    return { won, failed, played, ms, total, groups, rank: state.over ? rank : rank + ' (in progress)' };
+    const gamePts = items.reduce((sum, _, i) => sum + gamePoints(i), 0);
+    const points = gamePts + groups * PTS_GROUP + state.mistakes * PTS_MISTAKE;
+    return { won, ms, groups, gamePts, points };
   }
   function guessRows() {
     return state.guesses.map((key) => key.split(',').map((i) => GROUP_EMOJI[puzzle.groups[items[i].group].difficulty]).join(''));
@@ -285,64 +279,44 @@
     for (let r = 0; r < 4; r++)
       grid.push(state.order.slice(r * 4, r * 4 + 4).map((i) => CQ.game(items[i].game).icon + (state.results[i] === 'won' ? '✅' : state.results[i] ? '❌' : '🔒')).join(' '));
     return [
-      `🧾 wifegame · ${d}`,
+      `wifegame · ${d}`,
       ...grid,
       '',
       ...(guessRows().length ? guessRows() : ['(no groups guessed yet)']),
       '',
-      `${t.won}/16 games · ${state.mistakes} mistake${state.mistakes === 1 ? '' : 's'} · ⏱ ${fmtTime(t.ms)}`,
-      `💵 Total: ${fmtPrice(t.total)}`,
-      `Rank: ${t.rank}`,
+      `🏆 ${fmtPts(t.points)} points · ${t.won}/16 games · ${state.mistakes} mistake${state.mistakes === 1 ? '' : 's'}`,
       SITE_URL,
     ].join('\n');
   }
-  function openReceipt() {
+  function openResults() {
     const t = tally();
-    const r = CQ.rng('barcode' + dateKey + t.won + state.mistakes);
-    const now = CQ.now();
-    const line = (l, rgt, cls) => h('div', { class: 'rc-line' + (cls ? ' ' + cls : '') }, h('span', null, l), h('span', null, rgt));
-    const itemsEl = state.order.map((i) => {
+    const gameRows = state.order.map((i) => {
       const g = CQ.game(items[i].game);
       const res = state.results[i];
-      const stat = state.stats[i];
-      return h('div', { class: 'rc-item' + (res ? '' : ' locked') },
-        line(`${g.icon} ${g.name.toUpperCase()}`, res === 'won' ? '✅' : res ? '❌' : '🔒'),
-        line('   ' + (stat || (res ? 'revealed at checkout' : 'still in the freezer')), state.times[i] != null ? fmtPrice(state.times[i]) : '--.--', 'rc-sub')
+      return h('tr', { class: res ? '' : 'locked' },
+        h('td', null, h('div', { class: 'rs-game' }, `${g.icon} ${g.name}`), state.stats[i] ? h('div', { class: 'rs-detail' }, state.stats[i]) : null),
+        h('td', { class: 'rs-c' }, res === 'won' ? '✅' : res ? '❌' : '🔒'),
+        h('td', { class: 'rs-r muted' }, state.times[i] != null ? fmtTime(state.times[i]) : '—'),
+        h('td', { class: 'rs-r rs-pts' }, res ? gamePoints(i) : '—')
       );
     });
-    const tax = state.mistakes;
-    const bars = Array.from({ length: 46 }, () => h('span', { style: { width: r.range(1, 4) + 'px', marginRight: r.range(1, 3) + 'px' } }));
+    const sumRow = (label, calc, pts, cls) => h('tr', { class: cls || '' }, h('td', { colspan: 2 }, label), h('td', { class: 'rs-r muted' }, calc), h('td', { class: 'rs-r rs-pts' }, fmtPts(pts)));
     const rows = guessRows();
-    document.getElementById('rc-body').replaceChildren(
-      h('div', { class: 'receipt' },
-        h('div', { class: 'rc-center rc-title' }, 'WIFEMART'),
-        h('div', { class: 'rc-center' }, 'Est. 2026 · 16 aisles · open till midnight'),
-        h('div', { class: 'rc-center' }, now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })),
-        h('div', { class: 'rc-center' }, `REG #0${(CQ.dayNumber() % 9) + 1}   CASHIER: ${r.pick(['GARY', 'THE WORDLE GUY', 'MARGE', 'A SENTIENT CROSSWORD', 'DEBRA', 'CLIPPY'])}`),
-        h('div', { class: 'rc-rule' }),
-        ...itemsEl,
-        h('div', { class: 'rc-rule' }),
-        line('ITEMS WON', `${t.won}/16`),
-        line('GROUPS FOUND', `${t.groups}/4`),
-        line('SUBTOTAL (time)', fmtPrice(t.ms)),
-        line(`MISTAKE TAX (${tax} @ $1.00)`, fmtPrice(tax * MISTAKE_FEE)),
-        line(`RESTOCKING FEE (${t.failed} failed @ $3.00)`, fmtPrice(t.failed * FAIL_FEE)),
-        line('TOTAL', fmtPrice(t.total), 'rc-total'),
-        h('div', { class: 'rc-rule' }),
-        h('div', { class: 'rc-center rc-head' }, 'COUPONS REDEEMED'),
-        h('div', { class: 'rc-center rc-guesses' }, rows.length ? rows.join('\n') : 'none — try guessing a group!'),
-        h('div', { class: 'rc-rule' }),
-        h('div', { class: 'rc-center rc-head' }, 'CUSTOMER RANK'),
-        h('div', { class: 'rc-center rc-rank' }, t.rank),
-        h('div', { class: 'rc-rule' }),
-        h('div', { class: 'rc-center' }, '*** NO REFUNDS ON BOUGHT VOWELS ***'),
-        h('div', { class: 'rc-center' }, 'Thank you for shopping at wifemart! Come back after midnight.'),
-        h('div', { class: 'rc-center rc-small' }, SITE_URL.replace(/^https?:\/\//, '')),
-        h('div', { class: 'rc-barcode' }, bars),
-        h('div', { class: 'rc-center rc-small' }, dateKey.replace(/-/g, '') + ' ' + state.order.map((i) => (state.results[i] === 'won' ? 1 : 0)).join(''))
-      )
+    document.getElementById('rs-body').replaceChildren(
+      h('div', { class: 'rs-score' }, h('div', { class: 'rs-big' }, fmtPts(t.points)), h('div', { class: 'muted' }, 'points')),
+      h('table', { class: 'rs-table' },
+        h('thead', null, h('tr', null, h('th', null, 'Game'), h('th', { class: 'rs-c' }, ''), h('th', { class: 'rs-r' }, 'Time'), h('th', { class: 'rs-r' }, 'Pts'))),
+        h('tbody', null, gameRows),
+        h('tbody', { class: 'rs-sum' },
+          sumRow('Mini-games', `${t.won}/16 won`, t.gamePts),
+          sumRow('Groups found', `${t.groups} × ${PTS_GROUP}`, t.groups * PTS_GROUP),
+          sumRow('Mistakes', `${state.mistakes} × ${PTS_MISTAKE}`, state.mistakes * PTS_MISTAKE),
+          sumRow('Total', fmtTime(t.ms), t.points, 'rs-total')
+        )
+      ),
+      rows.length ? h('div', { class: 'rs-guesses' }, rows.join('\n')) : null
     );
-    receipt.hidden = false;
+    results.hidden = false;
   }
   async function share() {
     const text = shareText();
@@ -356,10 +330,10 @@
       CQ.toast('Could not copy');
     }
   }
-  const receipt = document.getElementById('receipt');
-  document.getElementById('share-btn').addEventListener('click', openReceipt);
-  document.getElementById('rc-share').addEventListener('click', share);
-  receipt.addEventListener('click', (e) => (e.target === receipt || e.target.closest('.rc-close')) && (receipt.hidden = true));
+  const results = document.getElementById('results');
+  document.getElementById('share-btn').addEventListener('click', openResults);
+  document.getElementById('rs-share').addEventListener('click', share);
+  results.addEventListener('click', (e) => (e.target === results || e.target.closest('.rs-close')) && (results.hidden = true));
 
   function renderEnd() {
     const end = document.getElementById('end');
@@ -370,7 +344,7 @@
       h('h2', null, won ? (state.mistakes === 0 ? 'Perfect!' : 'Solved!') : 'Next time!'),
       h('p', null, `Mini-games won: ${t.won}/16 · Mistakes: ${state.mistakes}/${MAX_MISTAKES}`),
       h('div', { class: 'btn-row' },
-        h('button', { class: 'btn primary', onclick: openReceipt }, '🧾 Get your receipt'),
+        h('button', { class: 'btn primary', onclick: openResults }, '🏆 Results'),
         h('button', { class: 'btn', onclick: openStats }, '📊 Stats')
       ),
       h('p', { class: 'muted' }, 'A new puzzle unlocks at midnight.')

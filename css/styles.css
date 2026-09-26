@@ -321,31 +321,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .wf-pointer { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); width: 0; height: 0; border-left: 11px solid transparent; border-right: 11px solid transparent; border-top: 22px solid var(--fg); z-index: 1; }
 .wf-status { text-align: center; font-weight: 600; font-size: 15px; min-height: 22px; margin-top: 6px; }
 
-/* Receipt */
+/* Results */
 .top-btns { display: flex; gap: 8px; }
-.rc-sheet .sheet-body { background: var(--tile); }
-.receipt {
-  background: #fffdf6; color: #222; font-family: 'Courier New', ui-monospace, monospace; font-size: 13px; line-height: 1.45;
-  max-width: 380px; margin: 0 auto; padding: 18px 16px 22px; box-shadow: 0 4px 18px rgba(0,0,0,0.18);
-  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 12px 100%;
-          mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 12px 100%;
-  transform: rotate(-0.6deg);
-}
-.rc-center { text-align: center; }
-.rc-title { font-weight: 800; font-size: 17px; letter-spacing: 1px; }
-.rc-head { font-weight: 800; letter-spacing: 1px; }
-.rc-rule { border-top: 1.5px dashed #999; margin: 10px 0; }
-.rc-line { display: flex; justify-content: space-between; gap: 10px; white-space: pre; }
-.rc-line span:first-child { overflow: hidden; text-overflow: ellipsis; }
-.rc-sub { color: #666; font-size: 12px; }
-.rc-item { margin-bottom: 4px; }
-.rc-item.locked { opacity: 0.55; }
-.rc-total { font-weight: 800; font-size: 16px; margin-top: 4px; }
-.rc-guesses { white-space: pre; font-size: 16px; line-height: 1.2; }
-.rc-rank { font-weight: 800; font-size: 16px; text-transform: uppercase; }
-.rc-barcode { display: flex; justify-content: center; height: 46px; margin: 14px 0 4px; }
-.rc-barcode span { background: #222; display: block; }
-.rc-small { font-size: 11px; letter-spacing: 2px; }
+.rs-score { text-align: center; margin-bottom: 12px; }
+.rs-big { font-size: 44px; font-weight: 800; line-height: 1; }
+.rs-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rs-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.rs-table td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.rs-table tr.locked { opacity: 0.45; }
+.rs-game { font-weight: 600; }
+.rs-detail { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.rs-c { text-align: center; width: 28px; }
+.rs-r { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rs-pts { font-weight: 700; width: 56px; }
+.rs-sum td { border-bottom: none; padding-top: 5px; padding-bottom: 5px; }
+.rs-sum tr:first-child td { border-top: 2px solid var(--fg); padding-top: 10px; }
+.rs-total td { font-weight: 800; font-size: 16px; border-top: 1px solid var(--line); }
+.rs-guesses { white-space: pre; text-align: center; font-size: 18px; line-height: 1.2; margin-top: 14px; }
 
 /* Stats */
 .st-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
