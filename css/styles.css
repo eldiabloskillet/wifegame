@@ -404,3 +404,4 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ms-cell.boom { background: color-mix(in srgb, var(--danger) 55%, var(--tile)); }
 @media (prefers-color-scheme: dark) { .ms-cell { background: #4b5566; } .ms-cell:hover { background: #5a6477; } .ms-cell.n1 { color: #6aa8ff; } .ms-cell.n2 { color: #5fd08f; } .ms-cell.n3 { color: #ff7a7a; } .ms-cell.n4 { color: #c59bff; } .ms-cell.n6, .ms-cell.n7, .ms-cell.n8 { color: #bbb; } }
 .wf-wheel { cursor: pointer; }
+.help-line { font-size: 18px; margin: 4px 0 18px; }
