@@ -254,7 +254,10 @@
   const GROUP_EMOJI = ['🟨', '🟩', '🟦', '🟪'];
   const fmtTime = (ms) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
   const fmtPrice = (ms) => { const s = Math.round(ms / 1000); return `$${Math.floor(s / 60)}.${String(s % 60).padStart(2, '0')}`; };
+  // Receipt total, a golf-style score: $1 per minute played + $1 per Connections mistake + $3 per failed game.
+  const MISTAKE_FEE = 60000, FAIL_FEE = 180000; // in "ms" so they format like time ($1.00 = 1 minute)
   function tally() {
+    const failed = Object.values(state.results).filter((r) => r === 'lost').length;
     const won = Object.values(state.results).filter((r) => r === 'won').length;
     const played = Object.keys(state.stats).length;
     const ms = Object.values(state.times).reduce((a, b) => a + b, 0);
@@ -267,7 +270,8 @@
       : score >= 8 ? 'Casual Letter Enjoyer'
       : score >= 3 ? 'Alphabet Tourist'
       : 'Person Who Opened the App';
-    return { won, played, ms, groups, rank: state.over ? rank : rank + ' (in progress)' };
+    const total = ms + state.mistakes * MISTAKE_FEE + failed * FAIL_FEE;
+    return { won, failed, played, ms, total, groups, rank: state.over ? rank : rank + ' (in progress)' };
   }
   function guessRows() {
     return state.guesses.map((key) => key.split(',').map((i) => GROUP_EMOJI[puzzle.groups[items[i].group].difficulty]).join(''));
@@ -287,6 +291,7 @@
       ...(guessRows().length ? guessRows() : ['(no groups guessed yet)']),
       '',
       `${t.won}/16 games · ${state.mistakes} mistake${state.mistakes === 1 ? '' : 's'} · ⏱ ${fmtTime(t.ms)}`,
+      `💵 Total: ${fmtPrice(t.total)}`,
       `Rank: ${t.rank}`,
       SITE_URL,
     ].join('\n');
@@ -320,8 +325,9 @@
         line('ITEMS WON', `${t.won}/16`),
         line('GROUPS FOUND', `${t.groups}/4`),
         line('SUBTOTAL (time)', fmtPrice(t.ms)),
-        line(`MISTAKE TAX (${tax} @ $1.00)`, `$${tax}.00`),
-        line('TOTAL', fmtPrice(t.ms + tax * 60000), 'rc-total'),
+        line(`MISTAKE TAX (${tax} @ $1.00)`, fmtPrice(tax * MISTAKE_FEE)),
+        line(`RESTOCKING FEE (${t.failed} failed @ $3.00)`, fmtPrice(t.failed * FAIL_FEE)),
+        line('TOTAL', fmtPrice(t.total), 'rc-total'),
         h('div', { class: 'rc-rule' }),
         h('div', { class: 'rc-center rc-head' }, 'COUPONS REDEEMED'),
         h('div', { class: 'rc-center rc-guesses' }, rows.length ? rows.join('\n') : 'none — try guessing a group!'),
