@@ -58,8 +58,8 @@
     state = fresh();
   }
   state.stats = state.stats || {};     // item index -> short silly stat
-  state.started = state.started || {}; // item index -> first-open timestamp
-  state.times = state.times || {};     // item index -> ms spent
+  state.active = state.active || {};   // item index -> ms spent with the game open, while unfinished
+  state.times = state.times || {};     // item index -> final ms spent (set when the game ends)
   const save = () => {
     try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {}
     recordHistory();
@@ -381,8 +381,8 @@
       game.mount(inst.root, ctx);
     }
     const inst = instances[i];
-    if (!state.started[i]) { state.started[i] = Date.now(); save(); }
     openIdx = i;
+    resumeClock();
     mTitle.replaceChildren(h('span', { class: 'm-icon' }, game.icon), game.name);
     document.getElementById('m-blurb').textContent = game.blurb;
     mBody.replaceChildren(inst.root);
@@ -393,9 +393,26 @@
     inst.show.forEach((f) => f());
     mBody.scrollTop = 0;
   }
+  // Game clocks only run while that game's window is open and the tab is visible.
+  let openedAt = null;
+  function resumeClock() {
+    if (openIdx != null && !instances[openIdx].finished && document.visibilityState === 'visible') openedAt = Date.now();
+  }
+  function pauseClock() {
+    if (openIdx != null && openedAt != null && !instances[openIdx].finished)
+      state.active[openIdx] = (state.active[openIdx] || 0) + (Date.now() - openedAt);
+    openedAt = null;
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { pauseClock(); save(); }
+    else resumeClock();
+  });
+  window.addEventListener('pagehide', () => { pauseClock(); save(); });
   function closeGame() {
     if (openIdx == null) return;
     instances[openIdx].hide.forEach((f) => f());
+    pauseClock();
+    save();
     openIdx = null;
     modal.hidden = true;
     document.body.classList.remove('modal-open');
@@ -405,10 +422,12 @@
   function finish(i, result, stat) {
     const inst = instances[i];
     if (inst.finished) return;
+    pauseClock();
     inst.finished = true;
     state.results[i] = result;
     state.stats[i] = stat || (result === 'won' ? 'nailed it' : 'gave up');
-    state.times[i] = Date.now() - (state.started[i] || Date.now());
+    state.times[i] = state.active[i] || 0;
+    delete state.active[i];
     save();
     giveUp.hidden = true;
     const it = items[i];
