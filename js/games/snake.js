@@ -1,7 +1,7 @@
 /* Snake: steer into the answer's letters in order. Wrong letters, walls and your own tail cost a life. */
 (function () {
   const { h } = CQ;
-  const N = 12, LIVES = 3, SIZE = 30;
+  const N = 12, LIVES = 3, SIZE = 30, GRACE = 500; // ms the snake holds still after (re)starting or new letters appear
 
   CQ.register({
     id: 'snake',
@@ -17,7 +17,7 @@
       const counter = h('div', { class: 'g-counter' });
       const overlay = h('button', { class: 'btn primary sn-start', onclick: () => go() }, 'Start');
       const wrap = h('div', { class: 'sn-wrap' }, canvas, overlay);
-      let snake, dir, nextDir, letters = [], pos = 0, lives = LIVES, timer = null, visible = true, grow = 0;
+      let snake, dir, nextDir, letters = [], pos = 0, lives = LIVES, timer = null, visible = true, grow = 0, holdUntil = 0;
 
       function reset() {
         snake = [{ x: 3, y: 6 }, { x: 2, y: 6 }, { x: 1, y: 6 }];
@@ -25,7 +25,7 @@
       }
       function free() {
         for (;;) {
-          const p = { x: rng.int(N), y: rng.int(N) };
+          const p = { x: 1 + rng.int(N - 2), y: 1 + rng.int(N - 2) }; // keep letters off the edges
           const nearHead = Math.abs(p.x - snake[0].x) + Math.abs(p.y - snake[0].y) < 3;
           if (!nearHead && !snake.some((s) => s.x === p.x && s.y === p.y) && !letters.some((l) => l.x === p.x && l.y === p.y)) return p;
         }
@@ -81,7 +81,7 @@
         overlay.hidden = false;
       }
       function step() {
-        if (!visible) return;
+        if (!visible || performance.now() < holdUntil) return;
         dir = nextDir;
         const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
         if (head.x < 0 || head.y < 0 || head.x >= N || head.y >= N) return hurt('Ouch, a wall');
@@ -99,6 +99,7 @@
               return ctx.win(`${lives}/${LIVES} lives, ${snake.length} segments long`);
             }
             spawn();
+            holdUntil = performance.now() + GRACE;
           } else {
             snake.shift();
             return hurt(`${hit.ch} isn't next`);
@@ -112,6 +113,7 @@
         if (ctx.done()) return;
         overlay.hidden = true;
         stop();
+        holdUntil = performance.now() + GRACE;
         timer = setInterval(step, Math.max(95, 170 - W.length * 6));
       }
       function stop() {
