@@ -7,8 +7,16 @@
   const dateKey = CQ.todayKey();
   const pool = window.PUZZLES;
   // Walk the pool in a fixed shuffled order so consecutive days don't follow authoring order.
-  const poolOrder = CQ.rng('pool-order').shuffle(pool.map((_, i) => i));
-  const puzzle = pool[poolOrder[((CQ.dayNumber() % pool.length) + pool.length) % pool.length]];
+  // Days before 2026-10-21 cycle the original 40 puzzles; the next 365 days each get one of the
+  // puzzles added after them, then the whole pool cycles.
+  const ORIGINAL = 40, YEAR_START = 293, dn = CQ.dayNumber();
+  const mod = (a, n) => ((a % n) + n) % n;
+  const all = pool.map((_, i) => i);
+  let pick;
+  if (dn < YEAR_START) pick = CQ.rng('pool-order').shuffle(all.slice(0, ORIGINAL))[mod(dn, ORIGINAL)];
+  else if (dn < YEAR_START + pool.length - ORIGINAL) pick = CQ.rng('pool-order-2').shuffle(all.slice(ORIGINAL))[dn - YEAR_START];
+  else pick = CQ.rng('pool-order-3').shuffle(all)[mod(dn - YEAR_START, pool.length)];
+  const puzzle = pool[pick];
   const rng = CQ.rng('day-' + dateKey);
 
   // Flatten words. Each word gets a unique game; words are assigned so every game's constraints hold.
